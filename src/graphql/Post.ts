@@ -3,18 +3,10 @@ import { schema } from 'nexus';
 schema.objectType({
   name: 'Post',
   definition(t) {
-    t.int('id', {
-      nullable: false,
-    });
-    t.string('title', {
-      nullable: false,
-    });
-    t.string('body', {
-      nullable: false,
-    });
-    t.boolean('published', {
-      nullable: false,
-    });
+    t.int('id');
+    t.string('title');
+    t.string('body');
+    t.boolean('published');
   },
 });
 
@@ -26,7 +18,7 @@ schema.extendType({
       type: 'Post',
       list: true,
       resolve(_root, _args, ctx) {
-        return ctx.db.posts.filter((p) => p.published === false);
+        return ctx.db.post.findMany({ where: { published: false } });
       },
     });
     t.field('posts', {
@@ -34,7 +26,7 @@ schema.extendType({
       type: 'Post',
       list: true,
       resolve(_root, _args, ctx) {
-        return ctx.db.posts.filter((p) => p.published === true);
+        return ctx.db.post.findMany({ where: { published: true } });
       },
     });
   },
@@ -59,13 +51,11 @@ schema.extendType({
       nullable: false,
       resolve(_root, _args, ctx) {
         const draft = {
-          id: ctx.db.posts.length + 1,
           title: _args.input.title,
           body: _args.input.body,
           published: false,
         };
-        ctx.db.posts.push(draft);
-        return draft;
+        return ctx.db.post.create({ data: draft });
       },
     });
     t.field('publish', {
@@ -74,15 +64,12 @@ schema.extendType({
         draftId: schema.intArg({ required: true }),
       },
       resolve(_root, _args, ctx) {
-        const draftToPublish = ctx.db.posts.find((p) => p.id === _args.draftId);
-
-        if (!draftToPublish) {
-          throw new Error('Could not find draft with id ' + _args.draftId);
-        }
-
-        draftToPublish.published = true;
-
-        return draftToPublish;
+        return ctx.db.post.update({
+          where: { id: _args.draftId },
+          data: {
+            published: true,
+          },
+        });
       },
     });
   },
